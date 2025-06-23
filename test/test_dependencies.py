@@ -29,16 +29,14 @@ REQUIRED_MODULES = [
     'requests',
     'dotenv',  # python-dotenv package is imported as dotenv
     'gunicorn',
-    'tenacity',
-    'docker-compose'  # Docker Compose python package
+    'tenacity'
 ]
 
 # System dependencies
 SYSTEM_DEPENDENCIES = [
-    'docker',         # Docker CLI
-    'docker-compose', # Docker Compose CLI
-    'aws',            # AWS CLI
-    'python3'         # Python 3
+    'docker',        # Docker CLI
+    'aws',           # AWS CLI
+    'python3'        # Python 3
 ]
 
 

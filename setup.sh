@@ -145,18 +145,25 @@ python3 -m venv $INSTALL_DIR/venv
 echo "Installing Python packages in virtual environment..."
 $INSTALL_DIR/venv/bin/pip install -r $INSTALL_DIR/requirements.txt
 
-# Ensure docker-compose is installed
-echo "Checking for docker-compose..."
-if ! command -v docker-compose &> /dev/null; then
-    echo -e "${YELLOW}Warning: docker-compose does not appear to be installed.${NC}"
-    read -p "Would you like to install docker-compose? (y/n) " -n 1 -r
+# Ensure docker compose is installed
+echo "Checking for docker compose..."
+# First check if the new "docker compose" command is available
+if docker compose version &> /dev/null; then
+    echo -e "${GREEN}Docker Compose (as docker compose plugin) is available.${NC}"
+elif command -v docker-compose &> /dev/null; then
+    echo -e "${YELLOW}Warning: You're using the older docker-compose command. Consider upgrading to Docker Compose V2.${NC}"
+else
+    echo -e "${YELLOW}Warning: Docker Compose does not appear to be installed.${NC}"
+    read -p "Would you like to install Docker Compose? (y/n) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "Installing docker-compose..."
-        curl -L "https://github.com/docker/compose/releases/download/v2.12.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        chmod +x /usr/local/bin/docker-compose
+        echo "Installing Docker Compose as a Docker plugin (V2)..."
+        # Install Docker Compose V2 as a Docker plugin
+        mkdir -p ~/.docker/cli-plugins
+        curl -SL "https://github.com/docker/compose/releases/download/v2.17.2/docker-compose-$(uname -s)-$(uname -m)" -o ~/.docker/cli-plugins/docker-compose
+        chmod +x ~/.docker/cli-plugins/docker-compose
     else
-        echo -e "${YELLOW}Warning: MCP Orchestrator requires docker-compose to function properly.${NC}"
+        echo -e "${YELLOW}Warning: MCP Orchestrator requires Docker Compose to function properly.${NC}"
         read -p "Continue anyway? (y/n) " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then

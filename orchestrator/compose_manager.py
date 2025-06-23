@@ -29,9 +29,9 @@ class ComposeManager:
         self._check_docker_compose()
         
     def _check_docker_compose(self) -> None:
-        """Check if docker-compose is installed."""
+        """Check if docker compose is installed."""
         try:
-            result = subprocess.run(["docker-compose", "--version"], 
+            result = subprocess.run(["docker", "compose", "--version"], 
                                    capture_output=True, text=True, check=True)
             logger.info(f"Using Docker Compose: {result.stdout.strip()}")
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
