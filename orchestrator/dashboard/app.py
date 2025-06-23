@@ -11,7 +11,8 @@ import datetime
 
 from orchestrator.utils.logging import setup_logging
 from orchestrator.config_manager import ConfigManager
-from orchestrator.container_manager import ContainerManager
+# Using compose_manager instead of container_manager now
+from orchestrator.compose_manager import ComposeManager
 from orchestrator.alb_manager import ALBManager
 from orchestrator.dashboard.auth import bp as auth_bp, login_required, init_auth
 

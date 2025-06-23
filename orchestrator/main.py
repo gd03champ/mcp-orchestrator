@@ -15,6 +15,8 @@ from orchestrator.compose_manager import ComposeManager
 from orchestrator.alb_manager import ALBManager
 from orchestrator.dashboard.app import run_dashboard
 
+# Remove the container_manager import as we use compose_manager instead
+
 # Set up logger
 logger = setup_logging("mcp-orchestrator", level=logging.INFO)
 
