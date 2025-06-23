@@ -29,14 +29,16 @@ REQUIRED_MODULES = [
     'requests',
     'dotenv',  # python-dotenv package is imported as dotenv
     'gunicorn',
-    'tenacity'
+    'tenacity',
+    'docker-compose'  # Docker Compose python package
 ]
 
 # System dependencies
 SYSTEM_DEPENDENCIES = [
-    'docker',  # Docker CLI
-    'aws',     # AWS CLI
-    'python3'  # Python 3
+    'docker',         # Docker CLI
+    'docker-compose', # Docker Compose CLI
+    'aws',            # AWS CLI
+    'python3'         # Python 3
 ]
 
 
@@ -145,7 +147,7 @@ def check_flask_functionality():
         return False
 
 
-def check_config_files(config_files=["settings.conf", "mcp.config.json"]):
+def check_config_files(config_files=["settings.conf", "mcp-compose.yaml"]):
     """Check that config files exist and are valid."""
     results = {}
     
@@ -164,6 +166,16 @@ def check_config_files(config_files=["settings.conf", "mcp.config.json"]):
                 results[config_file] = True
             except json.JSONDecodeError as e:
                 print(f"{RED}✗ JSON config file '{config_file}' is invalid: {e}{ENDC}")
+                results[config_file] = False
+        elif config_file.endswith('.yaml') or config_file.endswith('.yml'):
+            try:
+                import yaml
+                with open(config_file) as f:
+                    yaml.safe_load(f)
+                print(f"{GREEN}✓ YAML config file '{config_file}' is valid.{ENDC}")
+                results[config_file] = True
+            except yaml.YAMLError as e:
+                print(f"{RED}✗ YAML config file '{config_file}' is invalid: {e}{ENDC}")
                 results[config_file] = False
         elif config_file.endswith('.conf'):
             try:

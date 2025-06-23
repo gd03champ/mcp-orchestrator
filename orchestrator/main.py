@@ -11,7 +11,7 @@ import logging
 
 from orchestrator.utils.logging import setup_logging
 from orchestrator.config_manager import ConfigManager
-from orchestrator.container_manager import ContainerManager
+from orchestrator.compose_manager import ComposeManager
 from orchestrator.alb_manager import ALBManager
 from orchestrator.dashboard.app import run_dashboard
 
@@ -38,7 +38,7 @@ Examples:
   python main.py
   
   # Run with custom config files
-  python main.py --config /path/to/mcp.config.json --settings /path/to/settings.conf
+  python main.py --compose /path/to/mcp-compose.yaml --settings /path/to/settings.conf
   
   # Run once and exit (for testing)
   python main.py --one-shot
@@ -47,8 +47,8 @@ Examples:
   python main.py --no-dashboard
         """
     )
-    parser.add_argument('--config', default='mcp.config.json',
-                        help='Path to MCP configuration file (default: mcp.config.json)')
+    parser.add_argument('--compose', default='mcp-compose.yaml',
+                        help='Path to MCP Docker Compose file (default: mcp-compose.yaml)')
     parser.add_argument('--settings', default='settings.conf',
                         help='Path to settings file (default: settings.conf)')
     parser.add_argument('--no-dashboard', action='store_true',
@@ -60,12 +60,12 @@ Examples:
     parser.add_argument('--version', action='version', version='MCP Docker Orchestrator v1.0.0')
     return parser.parse_args()
 
-def reconciliation_loop(config_manager, container_manager, alb_manager, interval=60):
+def reconciliation_loop(config_manager, compose_manager, alb_manager, interval=60):
     """Run the reconciliation loop to keep resources in sync.
     
     Args:
         config_manager: The configuration manager instance
-        container_manager: The container manager instance
+        compose_manager: The Docker Compose manager instance
         alb_manager: The ALB manager instance
         interval: Sleep interval between reconciliation cycles
     """
@@ -76,16 +76,16 @@ def reconciliation_loop(config_manager, container_manager, alb_manager, interval
             # Reload configuration
             config_manager.load_config()
             
-            # Synchronize containers
-            logger.info("Running container reconciliation")
-            container_results = container_manager.sync_containers()
-            logger.info(f"Container sync complete: "
-                       f"{len(container_results['created'])} created, "
-                       f"{len(container_results['updated'])} updated, "
-                       f"{len(container_results['stopped'])} stopped")
+            # Synchronize services
+            logger.info("Running service reconciliation")
+            service_results = compose_manager.sync_services()
+            logger.info(f"Service sync complete: "
+                       f"{len(service_results['created'])} created, "
+                       f"{len(service_results['updated'])} updated, "
+                       f"{len(service_results['stopped'])} stopped")
             
-            if container_results['errors']:
-                logger.error(f"Container sync errors: {container_results['errors']}")
+            if service_results['errors']:
+                logger.error(f"Service sync errors: {service_results['errors']}")
                 
             # Synchronize ALB resources
             logger.info("Running ALB reconciliation")
@@ -112,12 +112,12 @@ def reconciliation_loop(config_manager, container_manager, alb_manager, interval
                 break
             time.sleep(1)
 
-def run_dashboard_thread(config_manager, container_manager, alb_manager, port=5000):
+def run_dashboard_thread(config_manager, compose_manager, alb_manager, port=5000):
     """Run the dashboard in a separate thread.
     
     Args:
         config_manager: The configuration manager instance
-        container_manager: The container manager instance
+        compose_manager: The Docker Compose manager instance
         alb_manager: The ALB manager instance
         port: Port for web dashboard
     """
@@ -125,7 +125,7 @@ def run_dashboard_thread(config_manager, container_manager, alb_manager, port=50
         logger.info(f"Starting dashboard on port {port}")
         run_dashboard(
             config_manager=config_manager,
-            container_manager=container_manager,
+            container_manager=compose_manager,  # Dashboard code will use container_manager interface
             alb_manager=alb_manager,
             port=port
         )
@@ -142,22 +142,23 @@ def main():
     args = parse_args()
     
     try:
-        # Initialize managers
+        # Initialize config manager
         logger.info("Initializing MCP Orchestrator")
         config_manager = ConfigManager(
-            mcp_config_path=args.config,
+            compose_path=args.compose,
             settings_path=args.settings
         )
         
-        container_manager = ContainerManager(config_manager)
-        alb_manager = ALBManager(config_manager, container_manager)
+        # Initialize managers
+        compose_manager = ComposeManager(config_manager)
+        alb_manager = ALBManager(config_manager, compose_manager)
         
         # Start dashboard in a separate thread if enabled
         dashboard_thread = None
         if not args.no_dashboard:
             dashboard_thread = threading.Thread(
                 target=run_dashboard_thread,
-                args=(config_manager, container_manager, alb_manager, args.dashboard_port),
+                args=(config_manager, compose_manager, alb_manager, args.dashboard_port),
                 daemon=True
             )
             dashboard_thread.start()
@@ -166,7 +167,7 @@ def main():
         interval = 0 if args.one_shot else int(config_manager.get_setting(
             "service", "reconciliation_interval_seconds", 60
         ))
-        reconciliation_loop(config_manager, container_manager, alb_manager, interval)
+        reconciliation_loop(config_manager, compose_manager, alb_manager, interval)
         
     except Exception as e:
         logger.error(f"Fatal error: {str(e)}", exc_info=True)

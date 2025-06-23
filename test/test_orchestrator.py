@@ -18,7 +18,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Import modules after path setup
 from orchestrator.utils.logging import setup_logging
 from orchestrator.config_manager import ConfigManager
-from orchestrator.container_manager import ContainerManager
+from orchestrator.compose_manager import ComposeManager
 from orchestrator.alb_manager import ALBManager
 
 
@@ -169,7 +169,7 @@ class TestMCPOrchestrator(unittest.TestCase):
         # Create temporary config files
         self.temp_dir = tempfile.TemporaryDirectory()
         self.settings_path = os.path.join(self.temp_dir.name, 'settings.conf')
-        self.mcp_config_path = os.path.join(self.temp_dir.name, 'mcp.config.json')
+        self.compose_path = os.path.join(self.temp_dir.name, 'mcp-compose.yaml')
         
         # Create test settings
         with open(self.settings_path, 'w') as f:
@@ -193,30 +193,31 @@ path = /monitor
 level = DEBUG
 ''')
         
-        # Create test MCP config
-        with open(self.mcp_config_path, 'w') as f:
-            f.write('''{
-  "mcpServers": {
-    "test-server": {
-      "command": "docker",
-      "args": ["run", "--rm", "test-image:latest"],
-      "env": {"TEST_ENV": "value"},
-      "disabled": false,
-      "autoApprove": []
-    },
-    "disabled-server": {
-      "command": "docker",
-      "args": ["run", "--rm", "disabled-image:latest"],
-      "env": {},
-      "disabled": true,
-      "autoApprove": []
-    }
-  }
-}''')
+        # Create test Docker Compose config
+        with open(self.compose_path, 'w') as f:
+            f.write('''version: '3'
+services:
+  test-server:
+    image: test-image:latest
+    restart: always
+    environment:
+      TEST_ENV: "value"
+    labels:
+      mcp.path: "/mcp/test-server"
+      mcp.disabled: "false"
+      mcp.managed_by: "mcp-orchestrator"
+  disabled-server:
+    image: disabled-image:latest
+    restart: always
+    labels:
+      mcp.path: "/mcp/disabled-server"
+      mcp.disabled: "true"
+      mcp.managed_by: "mcp-orchestrator"
+''')
         
         # Create config manager
         self.config_manager = ConfigManager(
-            mcp_config_path=self.mcp_config_path,
+            compose_path=self.compose_path,
             settings_path=self.settings_path
         )
         
@@ -241,7 +242,7 @@ level = DEBUG
         
         # Test getting specific server
         server = self.config_manager.get_mcp_server('test-server')
-        self.assertEqual(server['command'], 'docker')
+        self.assertIn('service_config', server)
         self.assertFalse(server['disabled'])
         
         # Test getting settings
@@ -252,30 +253,39 @@ level = DEBUG
         test_setting = self.config_manager.get_setting('nonexistent', 'key', 'default')
         self.assertEqual(test_setting, 'default')
     
-    @mock.patch('docker.from_env')
-    def test_container_manager(self, mock_docker):
-        """Test container manager."""
-        mock_docker.return_value = self.docker_mock
+    @mock.patch('subprocess.run')
+    def test_compose_manager(self, mock_subprocess):
+        """Test compose manager."""
+        # Mock subprocess run to simulate docker-compose commands
+        mock_subprocess.return_value.returncode = 0
+        mock_subprocess.return_value.stdout = "test-server"
         
-        # Create container manager
-        container_manager = ContainerManager(self.config_manager)
+        # Create compose manager
+        compose_manager = ComposeManager(self.config_manager)
         
-        # Test creating container
-        container_id = container_manager.create_container('test-server', 
-                                                          self.config_manager.get_mcp_server('test-server'))
-        self.assertIsNotNone(container_id)
-        
-        # Test getting container info
-        info = container_manager.get_container_info('test-server')
-        self.assertTrue(info['exists'])
-        self.assertTrue(info['running'])
-        
-        # Test stopping container
-        result = container_manager.stop_container('test-server')
+        # Test starting service
+        result = compose_manager.start_service('test-server')
         self.assertTrue(result)
         
-        # Test sync containers
-        results = container_manager.sync_containers()
+        # Test getting service info
+        mock_subprocess.return_value.stdout = """
+[
+  {
+    "Id": "container-id-0",
+    "State": {"Status": "running", "Running": true, "Health": {"Status": "healthy"}},
+    "Created": "2025-06-22T12:00:00Z",
+    "Config": {"Image": "test-image:latest"}
+  }
+]"""
+        info = compose_manager.get_service_info('test-server')
+        self.assertTrue(info['exists'])
+        
+        # Test stopping service
+        result = compose_manager.stop_service('test-server')
+        self.assertTrue(result)
+        
+        # Test sync services
+        results = compose_manager.sync_services()
         self.assertIn('created', results)
         self.assertIn('errors', results)
     
@@ -321,20 +331,33 @@ level = DEBUG
     def test_integration(self):
         """Test integration between components."""
         # Create mocks
-        with mock.patch('docker.from_env', return_value=self.docker_mock), \
+        with mock.patch('subprocess.run') as mock_subprocess, \
              mock.patch('boto3.client', return_value=self.aws_mock):
             
+            # Configure mock subprocess
+            mock_subprocess.return_value.returncode = 0
+            mock_subprocess.return_value.stdout = """
+[
+  {
+    "Id": "container-id-0",
+    "State": {"Status": "running", "Running": true, "Health": {"Status": "healthy"}},
+    "Created": "2025-06-22T12:00:00Z",
+    "Config": {"Image": "test-image:latest"},
+    "NetworkSettings": {"Ports": {"8080/tcp": [{"HostPort": "8080"}]}}
+  }
+]"""
+            
             # Create managers
-            container_manager = ContainerManager(self.config_manager)
-            alb_manager = ALBManager(self.config_manager, container_manager)
+            compose_manager = ComposeManager(self.config_manager)
+            alb_manager = ALBManager(self.config_manager, compose_manager)
             
             # Test full workflow
-            # 1. Sync containers
-            container_results = container_manager.sync_containers()
-            self.assertGreaterEqual(len(container_results['created']), 0)
+            # 1. Sync services
+            service_results = compose_manager.sync_services()
+            self.assertGreaterEqual(len(service_results['created']), 0)
             
-            # 2. Check container info
-            info = container_manager.get_container_info('test-server')
+            # 2. Check service info
+            info = compose_manager.get_service_info('test-server')
             self.assertTrue(info['exists'])
             
             # 3. Set up ALB

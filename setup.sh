@@ -92,15 +92,47 @@ level = INFO
 EOL
 fi
 
-# Create default MCP config file if it doesn't exist
-if [ ! -f "$INSTALL_DIR/mcp.config.json" ]; then
-    echo "Creating default mcp.config.json..."
-    cat > $INSTALL_DIR/mcp.config.json << EOL
-{
-  "mcpServers": {
-  }
-}
+# Create default Docker Compose file if it doesn't exist
+if [ ! -f "$INSTALL_DIR/mcp-compose.yaml" ]; then
+    echo "Creating default mcp-compose.yaml..."
+    cat > $INSTALL_DIR/mcp-compose.yaml << EOL
+version: '3'
+
+# MCP Docker Orchestrator Docker Compose Configuration
+# This file defines all MCP server containers to be managed by the orchestrator
+
+services:
+  # Example AWS Documentation MCP server (disabled by default)
+  aws-documentation-mcp-server:
+    image: mcp/aws-documentation:latest
+    restart: always
+    environment:
+      FASTMCP_LOG_LEVEL: "ERROR"
+      AWS_DOCUMENTATION_PARTITION: "aws"
+      AWS_REGION: "us-west-2"
+    labels:
+      mcp.path: "/mcp/aws-documentation"
+      mcp.disabled: "true"
+      mcp.managed_by: "mcp-orchestrator"
+
+  # Example GitHub API MCP server (disabled by default)
+  github-mcp-server:
+    image: mcp/github-api:latest
+    restart: always
+    # Uncomment and configure environment variables if needed
+    # environment:
+    #   GITHUB_API_URL: "https://api.github.com"
+    labels:
+      mcp.path: "/mcp/github"
+      mcp.disabled: "true"
+      mcp.managed_by: "mcp-orchestrator"
 EOL
+fi
+
+# Check if old config format exists
+if [ -f "$INSTALL_DIR/mcp.config.json" ]; then
+    echo -e "${YELLOW}Found old mcp.config.json format, but this version uses Docker Compose format.${NC}"
+    echo -e "${YELLOW}Please manually configure your services in mcp-compose.yaml.${NC}"
 fi
 
 # Install Python requirements
@@ -112,6 +144,26 @@ python3 -m venv $INSTALL_DIR/venv
 # Activate the virtual environment and install requirements
 echo "Installing Python packages in virtual environment..."
 $INSTALL_DIR/venv/bin/pip install -r $INSTALL_DIR/requirements.txt
+
+# Ensure docker-compose is installed
+echo "Checking for docker-compose..."
+if ! command -v docker-compose &> /dev/null; then
+    echo -e "${YELLOW}Warning: docker-compose does not appear to be installed.${NC}"
+    read -p "Would you like to install docker-compose? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "Installing docker-compose..."
+        curl -L "https://github.com/docker/compose/releases/download/v2.12.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        chmod +x /usr/local/bin/docker-compose
+    else
+        echo -e "${YELLOW}Warning: MCP Orchestrator requires docker-compose to function properly.${NC}"
+        read -p "Continue anyway? (y/n) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
+fi
 
 # Get the current user
 CURRENT_USER=$(logname || echo $SUDO_USER || echo $USER)
@@ -161,8 +213,8 @@ echo -e "${YELLOW}IMPORTANT:${NC} Before starting the service, ensure you config
 echo "  - AWS credentials (using aws configure or instance role)"
 echo "  - ALB Listener ARN in settings.conf"
 echo "  - VPC ID in settings.conf"
-echo "  - MCP servers in mcp.config.json"
+echo "  - MCP servers in mcp-compose.yaml"
 echo
 echo -e "${GREEN}Configuration files location:${NC}"
 echo "  $INSTALL_DIR/settings.conf"
-echo "  $INSTALL_DIR/mcp.config.json"
+echo "  $INSTALL_DIR/mcp-compose.yaml"

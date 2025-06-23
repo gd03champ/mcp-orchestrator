@@ -1,0 +1,40 @@
+version: '3'
+
+# MCP Docker Orchestrator Docker Compose Configuration
+# This file defines all MCP server containers to be managed by the orchestrator
+
+services:
+  # Example AWS Documentation MCP server (disabled by default)
+  aws-documentation-mcp-server:
+    image: mcp/aws-documentation:latest
+    restart: always
+    environment:
+      FASTMCP_LOG_LEVEL: "ERROR"
+      AWS_DOCUMENTATION_PARTITION: "aws"
+      AWS_REGION: "us-west-2"
+    labels:
+      mcp.path: "/mcp/aws-documentation"
+      mcp.disabled: "true"
+      mcp.managed_by: "mcp-orchestrator"
+
+  # Example GitHub API MCP server (disabled by default)
+  github-mcp-server:
+    image: mcp/github-api:latest
+    restart: always
+    # Uncomment and configure environment variables if needed
+    # environment:
+    #   GITHUB_API_URL: "https://api.github.com"
+    labels:
+      mcp.path: "/mcp/github"
+      mcp.disabled: "true"
+      mcp.managed_by: "mcp-orchestrator"
+
+# Add more MCP servers as needed following the same pattern
+# Each service should have:
+#  - A unique name that will be used as the server_id
+#  - An image field specifying the Docker image to use
+#  - Environment variables needed by the service
+#  - Labels:
+#    - mcp.path: Path pattern for ALB routing
+#    - mcp.disabled: "true" if service should not be started, "false" otherwise
+#    - mcp.managed_by: Should always be "mcp-orchestrator"

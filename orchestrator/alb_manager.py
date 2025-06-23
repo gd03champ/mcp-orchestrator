@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential
 from orchestrator.utils.logging import setup_logging
 from orchestrator.config_manager import ConfigManager
-from orchestrator.container_manager import ContainerManager
+from orchestrator.compose_manager import ComposeManager
 
 # Set up logger
 logger = setup_logging(__name__)
@@ -15,15 +15,15 @@ logger = setup_logging(__name__)
 class ALBManager:
     """Manages AWS ALB resources for MCP services."""
 
-    def __init__(self, config_manager: ConfigManager, container_manager: ContainerManager):
+    def __init__(self, config_manager: ConfigManager, compose_manager: ComposeManager):
         """Initialize the ALB Manager.
         
         Args:
             config_manager: The configuration manager instance
-            container_manager: The container manager instance
+            compose_manager: The compose manager instance
         """
         self.config_manager = config_manager
-        self.container_manager = container_manager
+        self.compose_manager = compose_manager
         self.client = None
         self.target_groups = {}  # Maps server_id -> target group ARN
         self._connect_aws()
@@ -184,7 +184,7 @@ class ALBManager:
                 return existing_arn
             
             # Get port for server
-            port = self.container_manager.get_port_for_server(server_id)
+            port = self.compose_manager.get_port_for_server(server_id)
             if not port:
                 logger.error(f"No port found for server {server_id}")
                 return None
@@ -249,7 +249,7 @@ class ALBManager:
                     return False
             
             # Get port for server
-            port = self.container_manager.get_port_for_server(server_id)
+            port = self.compose_manager.get_port_for_server(server_id)
             if not port:
                 logger.error(f"No port found for server {server_id}")
                 return False
@@ -548,12 +548,12 @@ class ALBManager:
                     results["deleted"].append(server_id)
                     continue
                 
-                # Get container info
-                container_info = self.container_manager.get_container_info(server_id)
+                # Get service info
+                service_info = self.compose_manager.get_service_info(server_id)
                 
-                if not container_info.get("exists", False) or not container_info.get("running", False):
-                    # Container doesn't exist or isn't running, skip
-                    logger.info(f"Container for {server_id} doesn't exist or isn't running, skipping ALB setup")
+                if not service_info.get("exists", False) or not service_info.get("running", False):
+                    # Service doesn't exist or isn't running, skip
+                    logger.info(f"Service for {server_id} doesn't exist or isn't running, skipping ALB setup")
                     continue
                 
                 # Set up ALB resources

@@ -79,7 +79,7 @@ cp -r "$PROJECT_DIR/orchestrator" "$TEMP_DIR/mcp-orchestrator/"
 cp "$PROJECT_DIR/requirements.txt" "$TEMP_DIR/mcp-orchestrator/"
 cp "$PROJECT_DIR/service.template" "$TEMP_DIR/mcp-orchestrator/"
 cp "$PROJECT_DIR/setup.sh" "$TEMP_DIR/mcp-orchestrator/"
-cp "$PROJECT_DIR/mcp.config.json" "$TEMP_DIR/mcp-orchestrator/"
+cp "$PROJECT_DIR/mcp-compose.yaml" "$TEMP_DIR/mcp-orchestrator/"
 cp "$PROJECT_DIR/settings.conf" "$TEMP_DIR/mcp-orchestrator/"
 
 # Install requirements
@@ -151,7 +151,7 @@ from orchestrator.config_manager import ConfigManager
 
 # Initialize ConfigManager
 config_manager = ConfigManager(
-    mcp_config_path='$INSTALL_DIR/mcp.config.json',
+    compose_path='$INSTALL_DIR/mcp-compose.yaml',
     settings_path='$INSTALL_DIR/settings.conf'
 )
 
