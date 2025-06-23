@@ -268,9 +268,20 @@ services:
                 mock_response.stdout = "Docker Compose version v2.17.2"
                 return mock_response
                 
-            # Check for docker compose ps (checking if service exists)
+            # Check for docker-compose version (legacy)
+            if len(args) >= 2 and args[0] == "docker-compose" and args[1] == "--version":
+                mock_response.stdout = "docker-compose version 1.29.2"
+                return mock_response
+                
+            # Check for docker compose ps (checking if service exists) - new format
             if (len(args) >= 6 and args[0:2] == ["docker", "compose"] and 
                 args[2] == "-f" and args[4] == "ps" and args[5] == "--services"):
+                mock_response.stdout = "test-server"
+                return mock_response
+                
+            # Check for docker-compose ps (checking if service exists) - legacy format
+            if (len(args) >= 5 and args[0] == "docker-compose" and 
+                args[1] == "-f" and args[3] == "ps" and args[4] == "--services"):
                 mock_response.stdout = "test-server"
                 return mock_response
                 
@@ -370,9 +381,20 @@ services:
                     mock_response.stdout = "Docker Compose version v2.17.2"
                     return mock_response
                     
-                # Check for docker compose ps (checking if service exists)
+                # Check for docker-compose version (legacy)
+                if len(args) >= 2 and args[0] == "docker-compose" and args[1] == "--version":
+                    mock_response.stdout = "docker-compose version 1.29.2"
+                    return mock_response
+                    
+                # Check for docker compose ps (checking if service exists) - new format
                 if (len(args) >= 6 and args[0:2] == ["docker", "compose"] and 
                     args[2] == "-f" and args[4] == "ps" and args[5] == "--services"):
+                    mock_response.stdout = "test-server"
+                    return mock_response
+                    
+                # Check for docker-compose ps (checking if service exists) - legacy format
+                if (len(args) >= 5 and args[0] == "docker-compose" and 
+                    args[1] == "-f" and args[3] == "ps" and args[4] == "--services"):
                     mock_response.stdout = "test-server"
                     return mock_response
                     

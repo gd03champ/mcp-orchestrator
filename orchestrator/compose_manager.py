@@ -26,17 +26,46 @@ class ComposeManager:
         self.config_manager = config_manager
         self.compose_path = config_manager.compose_path
         self.port_allocations = {}  # Maps server_id -> host_port
+        self._use_legacy_compose = False  # Flag to indicate whether to use docker-compose or docker compose
         self._check_docker_compose()
         
     def _check_docker_compose(self) -> None:
         """Check if docker compose is installed."""
         try:
+            # Try modern docker compose (as plugin)
             result = subprocess.run(["docker", "compose", "--version"], 
-                                   capture_output=True, text=True, check=True)
+                                  capture_output=True, text=True, check=True)
             logger.info(f"Using Docker Compose: {result.stdout.strip()}")
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            logger.error(f"Docker Compose not available: {str(e)}")
-            raise RuntimeError("Docker Compose is required but not available")
+            return
+        except FileNotFoundError:
+            logger.warning("Docker command not found in PATH. Checking docker-compose...")
+            # Log the PATH to help with debugging
+            logger.info(f"Current PATH: {os.environ.get('PATH', 'Not set')}")
+            try:
+                # Try classic docker-compose as fallback
+                result = subprocess.run(["docker-compose", "--version"],
+                                      capture_output=True, text=True, check=True)
+                logger.warning(f"Using legacy docker-compose: {result.stdout.strip()}")
+                logger.warning("Please consider upgrading to Docker Compose V2")
+                # Update all command methods to use docker-compose instead of docker compose
+                self._use_legacy_compose = True
+                return
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                logger.error(f"docker-compose also not available: {str(e)}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error checking Docker Compose version: {str(e)}")
+            if e.stderr:
+                logger.error(f"Error output: {e.stderr}")
+            
+        # If we get here, no Docker Compose is available
+        error_message = (
+            "Docker Compose is required but not available. "
+            "Please ensure Docker is installed and in your PATH. "
+            "For systemd services, make sure the PATH includes /usr/bin and /usr/local/bin. "
+            "You may need to restart the service after installing Docker."
+        )
+        logger.error(error_message)
+        raise RuntimeError(error_message)
     
     def _service_exists(self, service_id: str) -> bool:
         """Check if a service exists in docker-compose.
@@ -49,10 +78,10 @@ class ComposeManager:
         """
         try:
             # Use docker compose ps to check if service is running
-            result = subprocess.run(
-                ["docker", "compose", "-f", self.compose_path, "ps", "--services", "--filter", f"name={service_id}"],
-                capture_output=True, text=True, check=False
-            )
+            cmd = ["docker-compose", "-f", self.compose_path, "ps", "--services", "--filter", f"name={service_id}"] if self._use_legacy_compose else \
+                  ["docker", "compose", "-f", self.compose_path, "ps", "--services", "--filter", f"name={service_id}"]
+                  
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             
             # If service is in the list, it exists
             return service_id in result.stdout.strip().split('\n')
@@ -175,10 +204,10 @@ class ComposeManager:
                 return False
                 
             # Start the service
-            result = subprocess.run(
-                ["docker", "compose", "-f", self.compose_path, "up", "-d", service_id],
-                capture_output=True, text=True, check=False
-            )
+            cmd = ["docker-compose", "-f", self.compose_path, "up", "-d", service_id] if self._use_legacy_compose else \
+                  ["docker", "compose", "-f", self.compose_path, "up", "-d", service_id]
+                  
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             
             if result.returncode != 0:
                 logger.error(f"Failed to start service {service_id}: {result.stderr}")
@@ -206,10 +235,10 @@ class ComposeManager:
         """
         try:
             # Stop the service
-            result = subprocess.run(
-                ["docker", "compose", "-f", self.compose_path, "stop", service_id],
-                capture_output=True, text=True, check=False
-            )
+            cmd = ["docker-compose", "-f", self.compose_path, "stop", service_id] if self._use_legacy_compose else \
+                  ["docker", "compose", "-f", self.compose_path, "stop", service_id]
+                  
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             
             if result.returncode != 0:
                 logger.error(f"Failed to stop service {service_id}: {result.stderr}")
@@ -238,10 +267,10 @@ class ComposeManager:
         """
         try:
             # Restart the service
-            result = subprocess.run(
-                ["docker", "compose", "-f", self.compose_path, "restart", service_id],
-                capture_output=True, text=True, check=False
-            )
+            cmd = ["docker-compose", "-f", self.compose_path, "restart", service_id] if self._use_legacy_compose else \
+                  ["docker", "compose", "-f", self.compose_path, "restart", service_id]
+                  
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             
             if result.returncode != 0:
                 logger.error(f"Failed to restart service {service_id}: {result.stderr}")
@@ -327,10 +356,10 @@ class ComposeManager:
             List of service IDs
         """
         try:
-            result = subprocess.run(
-                ["docker", "compose", "-f", self.compose_path, "ps", "--services"],
-                capture_output=True, text=True, check=False
-            )
+            cmd = ["docker-compose", "-f", self.compose_path, "ps", "--services"] if self._use_legacy_compose else \
+                  ["docker", "compose", "-f", self.compose_path, "ps", "--services"]
+                  
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             
             if result.returncode != 0:
                 logger.error(f"Failed to list services: {result.stderr}")

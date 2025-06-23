@@ -12,7 +12,7 @@ User=%USER%
 # Add the docker group to the service if it exists
 SupplementaryGroups=docker
 Environment=PYTHONPATH=%INSTALL_DIR%
-Environment=PATH=%INSTALL_DIR%/venv/bin:$PATH
+Environment=PATH=/usr/local/bin:/usr/bin:/bin:%INSTALL_DIR%/venv/bin:$PATH
 
 # Hardening options
 ReadOnlyDirectories=/etc /usr
