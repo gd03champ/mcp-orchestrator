@@ -105,7 +105,13 @@ fi
 
 # Install Python requirements
 echo "Installing Python requirements..."
-pip3 install -r $INSTALL_DIR/requirements.txt
+# Create a virtual environment for the application
+echo "Creating Python virtual environment..."
+python3 -m venv $INSTALL_DIR/venv
+
+# Activate the virtual environment and install requirements
+echo "Installing Python packages in virtual environment..."
+$INSTALL_DIR/venv/bin/pip install -r $INSTALL_DIR/requirements.txt
 
 # Get the current user
 CURRENT_USER=$(logname || echo $SUDO_USER || echo $USER)
@@ -118,6 +124,7 @@ chmod +x $INSTALL_DIR/orchestrator/main.py
 echo "Configuring systemd service..."
 sed -e "s|%INSTALL_DIR%|$INSTALL_DIR|g" \
     -e "s|%USER%|$CURRENT_USER|g" \
+    -e "s|%PYTHON_PATH%|$INSTALL_DIR/venv/bin/python3|g" \
     $INSTALL_DIR/service.template > /etc/systemd/system/$SERVICE_NAME.service
 
 # Set appropriate permissions

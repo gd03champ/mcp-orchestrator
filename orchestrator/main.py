@@ -29,17 +29,35 @@ def signal_handler(sig, frame):
 
 def parse_args():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description='MCP Docker Orchestrator')
+    parser = argparse.ArgumentParser(
+        description='MCP Docker Orchestrator - A service that manages MCP servers as Docker containers and configures AWS ALB routing',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Run with default settings
+  python main.py
+  
+  # Run with custom config files
+  python main.py --config /path/to/mcp.config.json --settings /path/to/settings.conf
+  
+  # Run once and exit (for testing)
+  python main.py --one-shot
+  
+  # Run without dashboard
+  python main.py --no-dashboard
+        """
+    )
     parser.add_argument('--config', default='mcp.config.json',
-                        help='Path to MCP configuration file')
+                        help='Path to MCP configuration file (default: mcp.config.json)')
     parser.add_argument('--settings', default='settings.conf',
-                        help='Path to settings file')
+                        help='Path to settings file (default: settings.conf)')
     parser.add_argument('--no-dashboard', action='store_true',
                         help='Disable web dashboard')
     parser.add_argument('--dashboard-port', type=int, default=5000,
-                        help='Port for web dashboard')
+                        help='Port for web dashboard (default: 5000)')
     parser.add_argument('--one-shot', action='store_true',
                         help='Run once and exit (for testing)')
+    parser.add_argument('--version', action='version', version='MCP Docker Orchestrator v1.0.0')
     return parser.parse_args()
 
 def reconciliation_loop(config_manager, container_manager, alb_manager, interval=60):
