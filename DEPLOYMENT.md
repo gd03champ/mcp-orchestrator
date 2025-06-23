@@ -170,6 +170,22 @@ You'll need these values for the `settings.conf` file.
 
 ## Deploy MCP Docker Orchestrator
 
+### Uninstalling Previous Version
+
+If you already have a previous version of the MCP Orchestrator installed and want to update with the new changes, use the uninstall script:
+
+```bash
+sudo ./uninstall_service.sh
+```
+
+This script will:
+- Stop and disable the existing MCP Orchestrator service
+- Remove the systemd service file
+- Optionally remove the installation directory
+- Optionally create a backup of your configuration files
+
+After uninstallation, you can proceed with the installation steps to apply the new changes.
+
 ### Testing Before Deployment
 
 Before deploying to production, it's highly recommended to test the system to ensure all dependencies and functions work correctly:
@@ -341,6 +357,20 @@ http://your-alb-dns-name/monitor
 ```
 
 ## Troubleshooting
+
+### Reinstallation Issues
+
+If you encounter issues after updating the MCP Orchestrator:
+
+1. Use the uninstall script to completely remove the old installation:
+```bash
+sudo ./uninstall_service.sh
+```
+
+2. Review any error messages in the uninstallation process
+3. Check if there are any leftover files in `/opt/mcp-orchestrator`
+4. Ensure all dependencies are properly installed with `./run_tests.sh`
+5. Try reinstalling with `sudo ./setup.sh`
 
 ### Installation Issues
 

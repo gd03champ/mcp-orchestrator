@@ -133,7 +133,8 @@ echo "-----------------"
 
 # Test launching the main script with minimal arguments
 print_step "Testing main script launch (with --help argument)..."
-cd "$TEMP_DIR"
+cd "$INSTALL_DIR"
+export PYTHONPATH="$INSTALL_DIR"
 "$PYTHON_PATH" "$INSTALL_DIR/orchestrator/main.py" --help
 if [ $? -ne 0 ]; then
     print_error "Failed to run main script with --help argument."
@@ -142,7 +143,10 @@ fi
 
 # Test config loading
 print_step "Testing config loading..."
-cat > "$TEMP_DIR/test_config.py" << EOF
+cat > "$INSTALL_DIR/test_config.py" << EOF
+import os
+import sys
+sys.path.insert(0, os.path.abspath('$INSTALL_DIR'))
 from orchestrator.config_manager import ConfigManager
 
 # Initialize ConfigManager
@@ -165,7 +169,8 @@ for server_id, config in mcp_servers.items():
     print(f"  {server_id}: {'enabled' if not config.get('disabled', False) else 'disabled'}")
 EOF
 
-"$PYTHON_PATH" "$TEMP_DIR/test_config.py"
+cd "$INSTALL_DIR"
+"$PYTHON_PATH" "$INSTALL_DIR/test_config.py"
 if [ $? -ne 0 ]; then
     print_error "Failed to test config loading."
     exit 1

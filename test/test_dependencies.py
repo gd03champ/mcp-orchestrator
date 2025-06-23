@@ -23,11 +23,11 @@ REQUIRED_MODULES = [
     'docker',
     'boto3',
     'flask',
-    'pyyaml',
+    'yaml',  # pyyaml package is imported as yaml
     'configparser',
     'click',
     'requests',
-    'python-dotenv',
+    'dotenv',  # python-dotenv package is imported as dotenv
     'gunicorn',
     'tenacity'
 ]
