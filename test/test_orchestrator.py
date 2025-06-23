@@ -273,15 +273,22 @@ services:
                 mock_response.stdout = "docker-compose version 1.29.2"
                 return mock_response
                 
-            # Check for docker compose ps with project-directory (modern approach)
-            if (len(args) >= 7 and args[0:2] == ["docker", "compose"] and
-                args[2] == "--project-directory" and args[4] == "-f" and "ps" in args):
+            # Check for --project-directory test
+            if len(args) >= 4 and args[0:2] == ["docker", "compose"] and args[2] == "--project-directory" and "--help" in args:
+                # Simulate Docker Compose without --project-directory support
+                mock_response.returncode = 1
+                mock_response.stderr = "unknown flag: --project-directory\nSee 'docker --help'."
+                return mock_response
+                
+            # Check for docker compose with simple format (V2 without --project-directory)
+            if (len(args) >= 6 and args[0:2] == ["docker", "compose"] and
+                args[2] == "-f" and "ps" in args):
                 mock_response.stdout = "test-server"
                 return mock_response
                 
-            # Check for docker compose ps direct file approach (alternate approach)
-            if (len(args) >= 6 and args[0:2] == ["docker", "compose"] and 
-                args[2] == "-f" and args[4] == "ps" and args[5] == "--services"):
+            # Check for docker compose ps with project-directory (full V2 format)
+            if (len(args) >= 7 and args[0:2] == ["docker", "compose"] and
+                args[2] == "--project-directory" and args[4] == "-f" and "ps" in args):
                 mock_response.stdout = "test-server"
                 return mock_response
                 
@@ -390,6 +397,13 @@ services:
                 # Check for docker-compose version (legacy)
                 if len(args) >= 2 and args[0] == "docker-compose" and args[1] == "--version":
                     mock_response.stdout = "docker-compose version 1.29.2"
+                    return mock_response
+                    
+                # Check for --project-directory test
+                if len(args) >= 4 and args[0:2] == ["docker", "compose"] and args[2] == "--project-directory" and "--help" in args:
+                    # Simulate Docker Compose without --project-directory support
+                    mock_response.returncode = 1
+                    mock_response.stderr = "unknown flag: --project-directory\nSee 'docker --help'."
                     return mock_response
                     
                 # Check for docker compose ps with project-directory (modern approach)

@@ -27,15 +27,39 @@ class ComposeManager:
         self.compose_path = config_manager.compose_path
         self.port_allocations = {}  # Maps server_id -> host_port
         self._use_legacy_compose = False  # Flag to indicate whether to use docker-compose or docker compose
+        self._simple_compose_v2 = False   # Flag for Docker Compose V2 without --project-directory support
         self._check_docker_compose()
         
     def _check_docker_compose(self) -> None:
-        """Check if docker compose is installed."""
+        """Check if docker compose is installed and determine feature support."""
         try:
             # Try modern docker compose (as plugin)
             result = subprocess.run(["docker", "compose", "--version"], 
                                   capture_output=True, text=True, check=True)
             logger.info(f"Using Docker Compose: {result.stdout.strip()}")
+            
+            # Now test if the --project-directory flag is supported
+            try:
+                # Create a test command that uses --project-directory with --help
+                # This won't actually run anything but will let us check if the flag is recognized
+                test_result = subprocess.run(
+                    ["docker", "compose", "--project-directory", ".", "--help"],
+                    capture_output=True, text=True, check=False
+                )
+                
+                if test_result.returncode != 0 and "unknown flag: --project-directory" in test_result.stderr:
+                    logger.warning("Docker Compose V2 detected but --project-directory flag not supported")
+                    logger.warning("Using simplified command structure for compatibility")
+                    # Force use of simplified command structure
+                    self._simple_compose_v2 = True
+                else:
+                    logger.info("Docker Compose V2 with --project-directory support detected")
+                    self._simple_compose_v2 = False
+            except Exception as e:
+                logger.warning(f"Error testing Docker Compose features: {str(e)}")
+                # Default to simple commands for safety
+                self._simple_compose_v2 = True
+                
             return
         except FileNotFoundError:
             logger.warning("Docker command not found in PATH. Checking docker-compose...")
@@ -49,6 +73,7 @@ class ComposeManager:
                 logger.warning("Please consider upgrading to Docker Compose V2")
                 # Update all command methods to use docker-compose instead of docker compose
                 self._use_legacy_compose = True
+                self._simple_compose_v2 = False
                 return
             except (subprocess.CalledProcessError, FileNotFoundError) as e:
                 logger.error(f"docker-compose also not available: {str(e)}")
@@ -81,11 +106,15 @@ class ComposeManager:
             if self._use_legacy_compose:
                 cmd = ["docker-compose", "-f", self.compose_path, "ps", "--services", "--filter", f"name={service_id}"]
             else:
-                # For Docker Compose V2, use the project-directory and file options
-                project_dir = os.path.dirname(os.path.abspath(self.compose_path))
-                file_name = os.path.basename(self.compose_path)
-                # Use docker compose with explicit project directory
-                cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "ps", "--services"]
+                # For Docker Compose V2
+                if self._simple_compose_v2:
+                    # If Docker Compose doesn't support --project-directory, use -f with full path
+                    cmd = ["docker", "compose", "-f", self.compose_path, "ps", "--services", "--filter", f"name={service_id}"]
+                else:
+                    # If Docker Compose supports --project-directory, use that
+                    project_dir = os.path.dirname(os.path.abspath(self.compose_path))
+                    file_name = os.path.basename(self.compose_path)
+                    cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "ps", "--services"]
                   
             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             
@@ -213,11 +242,15 @@ class ComposeManager:
             if self._use_legacy_compose:
                 cmd = ["docker-compose", "-f", self.compose_path, "up", "-d", service_id]
             else:
-                # For Docker Compose V2, use the project-directory and file options
-                project_dir = os.path.dirname(os.path.abspath(self.compose_path))
-                file_name = os.path.basename(self.compose_path)
-                # Use docker compose with explicit project directory
-                cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "up", "-d", service_id]
+                # For Docker Compose V2
+                if self._simple_compose_v2:
+                    # If Docker Compose doesn't support --project-directory, use -f with full path
+                    cmd = ["docker", "compose", "-f", self.compose_path, "up", "-d", service_id]
+                else:
+                    # If Docker Compose supports --project-directory, use that
+                    project_dir = os.path.dirname(os.path.abspath(self.compose_path))
+                    file_name = os.path.basename(self.compose_path)
+                    cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "up", "-d", service_id]
                   
             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             
@@ -250,11 +283,15 @@ class ComposeManager:
             if self._use_legacy_compose:
                 cmd = ["docker-compose", "-f", self.compose_path, "stop", service_id]
             else:
-                # For Docker Compose V2, use the project-directory and file options
-                project_dir = os.path.dirname(os.path.abspath(self.compose_path))
-                file_name = os.path.basename(self.compose_path)
-                # Use docker compose with explicit project directory
-                cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "stop", service_id]
+                # For Docker Compose V2
+                if self._simple_compose_v2:
+                    # If Docker Compose doesn't support --project-directory, use -f with full path
+                    cmd = ["docker", "compose", "-f", self.compose_path, "stop", service_id]
+                else:
+                    # If Docker Compose supports --project-directory, use that
+                    project_dir = os.path.dirname(os.path.abspath(self.compose_path))
+                    file_name = os.path.basename(self.compose_path)
+                    cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "stop", service_id]
                   
             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             
@@ -288,11 +325,15 @@ class ComposeManager:
             if self._use_legacy_compose:
                 cmd = ["docker-compose", "-f", self.compose_path, "restart", service_id]
             else:
-                # For Docker Compose V2, use the project-directory and file options
-                project_dir = os.path.dirname(os.path.abspath(self.compose_path))
-                file_name = os.path.basename(self.compose_path)
-                # Use docker compose with explicit project directory
-                cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "restart", service_id]
+                # For Docker Compose V2
+                if self._simple_compose_v2:
+                    # If Docker Compose doesn't support --project-directory, use -f with full path
+                    cmd = ["docker", "compose", "-f", self.compose_path, "restart", service_id]
+                else:
+                    # If Docker Compose supports --project-directory, use that
+                    project_dir = os.path.dirname(os.path.abspath(self.compose_path))
+                    file_name = os.path.basename(self.compose_path)
+                    cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "restart", service_id]
                   
             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             
@@ -384,11 +425,15 @@ class ComposeManager:
             if self._use_legacy_compose:
                 cmd = ["docker-compose", "-f", self.compose_path, "ps", "--services"]
             else:
-                # For Docker Compose V2, use the project-directory and file options
-                project_dir = os.path.dirname(os.path.abspath(self.compose_path))
-                file_name = os.path.basename(self.compose_path)
-                # Use docker compose with explicit project directory
-                cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "ps", "--services"]
+                # For Docker Compose V2
+                if self._simple_compose_v2:
+                    # If Docker Compose doesn't support --project-directory, use -f with full path
+                    cmd = ["docker", "compose", "-f", self.compose_path, "ps", "--services"]
+                else:
+                    # If Docker Compose supports --project-directory, use that
+                    project_dir = os.path.dirname(os.path.abspath(self.compose_path))
+                    file_name = os.path.basename(self.compose_path)
+                    cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "ps", "--services"]
                 
             logger.info(f"Running command: {' '.join(cmd)}")
                   
