@@ -132,10 +132,11 @@ cat "$TEMP_DIR/mcp-orchestrator.service"
 echo "-----------------"
 
 # Test launching the main script with minimal arguments
-print_step "Testing main script launch (with --help argument)..."
+print_step "Testing main script launch (with --help and --compose arguments)..."
 cd "$INSTALL_DIR"
 export PYTHONPATH="$INSTALL_DIR"
 "$PYTHON_PATH" "$INSTALL_DIR/orchestrator/main.py" --help
+"$PYTHON_PATH" "$INSTALL_DIR/orchestrator/main.py" --compose "$INSTALL_DIR/mcp-compose.yaml" --one-shot --no-dashboard
 if [ $? -ne 0 ]; then
     print_error "Failed to run main script with --help argument."
     exit 1

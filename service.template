@@ -4,7 +4,7 @@ After=network.target docker.service
 Wants=docker.service
 
 [Service]
-ExecStart=%PYTHON_PATH% %INSTALL_DIR%/orchestrator/main.py --config %INSTALL_DIR%/mcp.config.json --settings %INSTALL_DIR%/settings.conf
+ExecStart=%PYTHON_PATH% %INSTALL_DIR%/orchestrator/main.py --compose %INSTALL_DIR%/mcp-compose.yaml --settings %INSTALL_DIR%/settings.conf
 WorkingDirectory=%INSTALL_DIR%
 Restart=always
 RestartSec=5
