@@ -78,8 +78,14 @@ class ComposeManager:
         """
         try:
             # Use docker compose ps to check if service is running
-            cmd = ["docker-compose", "-f", self.compose_path, "ps", "--services", "--filter", f"name={service_id}"] if self._use_legacy_compose else \
-                  ["docker", "compose", "-f", self.compose_path, "ps", "--services", "--filter", f"name={service_id}"]
+            if self._use_legacy_compose:
+                cmd = ["docker-compose", "-f", self.compose_path, "ps", "--services", "--filter", f"name={service_id}"]
+            else:
+                # For Docker Compose V2, use the project-directory and file options
+                project_dir = os.path.dirname(os.path.abspath(self.compose_path))
+                file_name = os.path.basename(self.compose_path)
+                # Use docker compose with explicit project directory
+                cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "ps", "--services"]
                   
             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             
@@ -204,8 +210,14 @@ class ComposeManager:
                 return False
                 
             # Start the service
-            cmd = ["docker-compose", "-f", self.compose_path, "up", "-d", service_id] if self._use_legacy_compose else \
-                  ["docker", "compose", "-f", self.compose_path, "up", "-d", service_id]
+            if self._use_legacy_compose:
+                cmd = ["docker-compose", "-f", self.compose_path, "up", "-d", service_id]
+            else:
+                # For Docker Compose V2, use the project-directory and file options
+                project_dir = os.path.dirname(os.path.abspath(self.compose_path))
+                file_name = os.path.basename(self.compose_path)
+                # Use docker compose with explicit project directory
+                cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "up", "-d", service_id]
                   
             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             
@@ -235,8 +247,14 @@ class ComposeManager:
         """
         try:
             # Stop the service
-            cmd = ["docker-compose", "-f", self.compose_path, "stop", service_id] if self._use_legacy_compose else \
-                  ["docker", "compose", "-f", self.compose_path, "stop", service_id]
+            if self._use_legacy_compose:
+                cmd = ["docker-compose", "-f", self.compose_path, "stop", service_id]
+            else:
+                # For Docker Compose V2, use the project-directory and file options
+                project_dir = os.path.dirname(os.path.abspath(self.compose_path))
+                file_name = os.path.basename(self.compose_path)
+                # Use docker compose with explicit project directory
+                cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "stop", service_id]
                   
             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             
@@ -267,8 +285,14 @@ class ComposeManager:
         """
         try:
             # Restart the service
-            cmd = ["docker-compose", "-f", self.compose_path, "restart", service_id] if self._use_legacy_compose else \
-                  ["docker", "compose", "-f", self.compose_path, "restart", service_id]
+            if self._use_legacy_compose:
+                cmd = ["docker-compose", "-f", self.compose_path, "restart", service_id]
+            else:
+                # For Docker Compose V2, use the project-directory and file options
+                project_dir = os.path.dirname(os.path.abspath(self.compose_path))
+                file_name = os.path.basename(self.compose_path)
+                # Use docker compose with explicit project directory
+                cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "restart", service_id]
                   
             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             
@@ -356,8 +380,17 @@ class ComposeManager:
             List of service IDs
         """
         try:
-            cmd = ["docker-compose", "-f", self.compose_path, "ps", "--services"] if self._use_legacy_compose else \
-                  ["docker", "compose", "-f", self.compose_path, "ps", "--services"]
+            # For modern Docker Compose format (v2), we need the commands to be structured differently
+            if self._use_legacy_compose:
+                cmd = ["docker-compose", "-f", self.compose_path, "ps", "--services"]
+            else:
+                # For Docker Compose V2, use the project-directory and file options
+                project_dir = os.path.dirname(os.path.abspath(self.compose_path))
+                file_name = os.path.basename(self.compose_path)
+                # Use docker compose with explicit project directory
+                cmd = ["docker", "compose", "--project-directory", project_dir, "-f", file_name, "ps", "--services"]
+                
+            logger.info(f"Running command: {' '.join(cmd)}")
                   
             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
             

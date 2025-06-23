@@ -273,7 +273,13 @@ services:
                 mock_response.stdout = "docker-compose version 1.29.2"
                 return mock_response
                 
-            # Check for docker compose ps (checking if service exists) - new format
+            # Check for docker compose ps with project-directory (modern approach)
+            if (len(args) >= 7 and args[0:2] == ["docker", "compose"] and
+                args[2] == "--project-directory" and args[4] == "-f" and "ps" in args):
+                mock_response.stdout = "test-server"
+                return mock_response
+                
+            # Check for docker compose ps direct file approach (alternate approach)
             if (len(args) >= 6 and args[0:2] == ["docker", "compose"] and 
                 args[2] == "-f" and args[4] == "ps" and args[5] == "--services"):
                 mock_response.stdout = "test-server"
