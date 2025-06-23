@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}MCP Orchestrator Dashboard{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+  <div class="container">
+    <h1 class="display-4">MCP Orchestrator Dashboard</h1>
+    <p class="lead">Monitor and manage your MCP containers and ALB configurations.</p>
+    <hr class="my-4">
+    <div class="row">
+      <div class="col-md-3 mb-4">
+        <div class="card bg-primary text-white">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-server"></i> Total Services</h5>
+            <h2 class="display-4">{{ container_stats.total }}</h2>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-4">
+        <div class="card bg-success text-white">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-check-circle"></i> Running</h5>
+            <h2 class="display-4">{{ container_stats.running }}</h2>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-4">
+        <div class="card bg-danger text-white">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-times-circle"></i> Stopped</h5>
+            <h2 class="display-4">{{ container_stats.stopped }}</h2>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-4">
+        <div class="card bg-warning text-white">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-exclamation-circle"></i> Disabled</h5>
+            <h2 class="display-4">{{ container_stats.disabled }}</h2>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">MCP Services</h5>
+          <div>
+            <a href="{{ url_for('dashboard.sync') }}" class="btn btn-primary btn-sm">
+              <i class="fas fa-sync"></i> Sync All
+            </a>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Service ID</th>
+                  <th>Status</th>
+                  <th>Host Port</th>
+                  <th>Path</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for server_id, info in containers.items() %}
+                <tr>
+                  <td>{{ server_id }}</td>
+                  <td>
+                    {% if info.exists and info.running %}
+                      <span class="badge badge-success">
+                        <i class="fas fa-circle"></i> Running
+                      </span>
+                    {% elif info.exists and not info.running %}
+                      <span class="badge badge-danger">
+                        <i class="fas fa-circle"></i> Stopped
+                      </span>
+                    {% else %}
+                      <span class="badge badge-secondary">
+                        <i class="fas fa-circle"></i> Not Created
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td>{{ info.host_port if info.host_port else 'N/A' }}</td>
+                  <td>
+                    <code>/mcp/{{ server_id }}/*</code>
+                    {% if info.exists and info.running and info.host_port %}
+                      <a href="http://{{ request.host.split(':')[0] }}:{{ info.host_port }}/health" target="_blank" class="btn btn-link btn-sm">
+                        <i class="fas fa-heartbeat"></i>
+                      </a>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="btn-group" role="group">
+                      {% if info.exists and info.running %}
+                        <a href="{{ url_for('dashboard.restart_container', server_id=server_id) }}" class="btn btn-warning btn-sm">
+                          <i class="fas fa-sync"></i> Restart
+                        </a>
+                        <a href="{{ url_for('dashboard.stop_container', server_id=server_id) }}" class="btn btn-danger btn-sm">
+                          <i class="fas fa-stop"></i> Stop
+                        </a>
+                      {% elif info.exists and not info.running %}
+                        <a href="{{ url_for('dashboard.start_container', server_id=server_id) }}" class="btn btn-success btn-sm">
+                          <i class="fas fa-play"></i> Start
+                        </a>
+                      {% else %}
+                        <a href="{{ url_for('dashboard.create_container', server_id=server_id) }}" class="btn btn-primary btn-sm">
+                          <i class="fas fa-plus"></i> Create
+                        </a>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="5" class="text-center">No MCP services configured</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Auto-refresh the page every 30 seconds
+  setTimeout(function() {
+    window.location.reload();
+  }, 30000);
+</script>
+{% endblock %}

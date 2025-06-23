@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}ALB Configuration{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+      <h2 class="my-4">AWS ALB Configuration</h2>
+      
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">ALB Routing Configuration</h5>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> This page shows the ALB path-based routing configuration for your MCP servers.
+            Each MCP server is mapped to a path pattern <code>/mcp/{server-id}/*</code>.
+          </div>
+          
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Service ID</th>
+                <th>Path Pattern</th>
+                <th>Target Port</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for server_id, info in containers.items() %}
+              <tr>
+                <td>{{ server_id }}</td>
+                <td><code>/mcp/{{ server_id }}/*</code></td>
+                <td>{{ info.host_port if info.exists else 'N/A' }}</td>
+                <td>
+                  {% if info.exists and info.running %}
+                    <span class="badge badge-success">
+                      <i class="fas fa-check-circle"></i> Active
+                    </span>
+                  {% else %}
+                    <span class="badge badge-warning">
+                      <i class="fas fa-exclamation-circle"></i> Inactive
+                    </span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="4" class="text-center">No MCP services configured</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">AWS Configuration</h5>
+        </div>
+        <div class="card-body">
+          <p>These settings are configured in <code>settings.conf</code>:</p>
+          
+          <table class="table table-bordered">
+            <tr>
+              <th width="30%">Region</th>
+              <td>{{ g.config_manager.get_setting('aws', 'region', 'not configured') }}</td>
+            </tr>
+            <tr>
+              <th>ALB ARN</th>
+              <td>
+                {% set alb_arn = g.config_manager.get_setting('aws', 'alb_arn', '') %}
+                {% if alb_arn %}
+                  <code>{{ alb_arn }}</code>
+                {% else %}
+                  <div class="text-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Not configured
+                  </div>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <th>Listener ARN</th>
+              <td>
+                {% set listener_arn = g.config_manager.get_setting('aws', 'listener_arn', '') %}
+                {% if listener_arn %}
+                  <code>{{ listener_arn }}</code>
+                {% else %}
+                  <div class="text-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Not configured
+                  </div>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <th>VPC ID</th>
+              <td>
+                {% set vpc_id = g.config_manager.get_setting('aws', 'vpc_id', '') %}
+                {% if vpc_id %}
+                  <code>{{ vpc_id }}</code>
+                {% else %}
+                  <div class="text-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Not configured
+                  </div>
+                {% endif %}
+              </td>
+            </tr>
+          </table>
+          
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i> AWS ALB configuration requires all settings above to be properly configured.
+            If any setting is missing, ALB integration will not function correctly.
+          </div>
+          
+          <a href="{{ url_for('dashboard.sync') }}" class="btn btn-primary">
+            <i class="fas fa-sync"></i> Synchronize ALB Configuration
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}MCP Containers{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+      <h2 class="my-4">MCP Container Details</h2>
+      
+      {% for server_id, config in mcp_servers.items() %}
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">{{ server_id }}</h5>
+          <div>
+            {% set container_info = containers.get(server_id, {}) %}
+            {% if container_info.exists and container_info.running %}
+              <span class="badge badge-success">
+                <i class="fas fa-circle"></i> Running
+              </span>
+            {% elif container_info.exists and not container_info.running %}
+              <span class="badge badge-danger">
+                <i class="fas fa-circle"></i> Stopped
+              </span>
+            {% else %}
+              <span class="badge badge-secondary">
+                <i class="fas fa-circle"></i> Not Created
+              </span>
+            {% endif %}
+            
+            {% if config.get('disabled', false) %}
+              <span class="badge badge-warning">
+                <i class="fas fa-ban"></i> Disabled
+              </span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <h6>Docker Configuration</h6>
+              <table class="table table-sm table-striped">
+                <tr>
+                  <th>Command</th>
+                  <td><code>{{ config.get('command') }}</code></td>
+                </tr>
+                <tr>
+                  <th>Image</th>
+                  <td>
+                    {% set args = config.get('args', []) %}
+                    {% set image = "" %}
+                    {% if 'run' in args %}
+                      {% for i in range(args.index('run') + 1, args|length) %}
+                        {% if not args[i].startswith('-') %}
+                          {% if i == 0 or not args[i-1].startswith('-') or args[i-1].startswith('--') %}
+                            {% set image = args[i] %}
+                            {% break %}
+                          {% endif %}
+                        {% endif %}
+                      {% endfor %}
+                    {% endif %}
+                    <code>{{ image }}</code>
+                  </td>
+                </tr>
+                <tr>
+                  <th>Args</th>
+                  <td>
+                    <code class="d-block" style="white-space: pre-wrap;">{{ config.get('args', [])|join(' ') }}</code>
+                  </td>
+                </tr>
+                <tr>
+                  <th>Environment</th>
+                  <td>
+                    {% if config.get('env') %}
+                      {% for key, value in config.get('env', {}).items() %}
+                        <div><code>{{ key }}={{ value }}</code></div>
+                      {% endfor %}
+                    {% else %}
+                      <em>No environment variables</em>
+                    {% endif %}
+                  </td>
+                </tr>
+              </table>
+            </div>
+            <div class="col-md-6">
+              <h6>Container Status</h6>
+              {% if container_info.exists %}
+                <table class="table table-sm table-striped">
+                  <tr>
+                    <th>Container ID</th>
+                    <td><code>{{ container_info.id }}</code></td>
+                  </tr>
+                  <tr>
+                    <th>Status</th>
+                    <td>{{ container_info.status }}</td>
+                  </tr>
+                  <tr>
+                    <th>Running</th>
+                    <td>{{ container_info.running }}</td>
+                  </tr>
+                  <tr>
+                    <th>Health</th>
+                    <td>{{ container_info.health }}</td>
+                  </tr>
+                  <tr>
+                    <th>Host Port</th>
+                    <td>{{ container_info.host_port if container_info.host_port else 'N/A' }}</td>
+                  </tr>
+                  <tr>
+                    <th>Created</th>
+                    <td>{{ container_info.created }}</td>
+                  </tr>
+                </table>
+                <div class="mt-3">
+                  <div class="btn-group" role="group">
+                    {% if container_info.running %}
+                      <a href="{{ url_for('dashboard.restart_container', server_id=server_id) }}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-sync"></i> Restart
+                      </a>
+                      <a href="{{ url_for('dashboard.stop_container', server_id=server_id) }}" class="btn btn-danger btn-sm">
+                        <i class="fas fa-stop"></i> Stop
+                      </a>
+                    {% else %}
+                      <a href="{{ url_for('dashboard.start_container', server_id=server_id) }}" class="btn btn-success btn-sm">
+                        <i class="fas fa-play"></i> Start
+                      </a>
+                    {% endif %}
+                  </div>
+                </div>
+              {% else %}
+                <div class="alert alert-secondary">
+                  Container not created.
+                  <a href="{{ url_for('dashboard.create_container', server_id=server_id) }}" class="btn btn-primary btn-sm ml-2">
+                    <i class="fas fa-plus"></i> Create
+                  </a>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="alert alert-info">
+        No MCP servers configured. Add servers to mcp.config.json.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

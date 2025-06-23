@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}MCP Logs{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+      <h2 class="my-4">MCP Service Logs</h2>
+      
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Log Viewer</h5>
+          <div>
+            <button id="refresh-logs" class="btn btn-primary btn-sm">
+              <i class="fas fa-sync"></i> Refresh
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> This page shows recent logs from the MCP Orchestrator service.
+            For more detailed logs, check the system journal with: <code>journalctl -u mcp-orchestrator -f</code>
+          </div>
+          
+          <div class="logs-container bg-dark text-light p-3" style="height: 500px; overflow-y: auto; font-family: monospace; white-space: pre-wrap;">
+            {% if logs %}
+              {% for log in logs %}
+                {{ log }}
+              {% endfor %}
+            {% else %}
+              No logs available.
+            {% endif %}
+          </div>
+          
+          <div class="mt-3">
+            <div class="form-group">
+              <label for="log-level">Log Level</label>
+              <select id="log-level" class="form-control">
+                <option value="DEBUG" {% if g.config_manager.get_setting('logging', 'level') == 'DEBUG' %}selected{% endif %}>DEBUG</option>
+                <option value="INFO" {% if g.config_manager.get_setting('logging', 'level') == 'INFO' %}selected{% endif %}>INFO</option>
+                <option value="WARNING" {% if g.config_manager.get_setting('logging', 'level') == 'WARNING' %}selected{% endif %}>WARNING</option>
+                <option value="ERROR" {% if g.config_manager.get_setting('logging', 'level') == 'ERROR' %}selected{% endif %}>ERROR</option>
+              </select>
+            </div>
+            <button id="update-log-level" class="btn btn-primary">Update Log Level</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.getElementById('refresh-logs').addEventListener('click', function() {
+    location.reload();
+  });
+  
+  // Auto-refresh every 10 seconds
+  setTimeout(function() {
+    location.reload();
+  }, 10000);
+  
+  // This is just a placeholder - in a real implementation, this would
+  // update the log level via an AJAX call to an API endpoint
+  document.getElementById('update-log-level').addEventListener('click', function() {
+    const logLevel = document.getElementById('log-level').value;
+    alert('Log level update to ' + logLevel + ' not implemented in this demo');
+  });
+</script>
+{% endblock %}
