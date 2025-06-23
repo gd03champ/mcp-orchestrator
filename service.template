@@ -9,6 +9,8 @@ WorkingDirectory=%INSTALL_DIR%
 Restart=always
 RestartSec=5
 User=%USER%
+# Add the docker group to the service if it exists
+SupplementaryGroups=docker
 Environment=PYTHONPATH=%INSTALL_DIR%
 Environment=PATH=%INSTALL_DIR%/venv/bin:$PATH
 

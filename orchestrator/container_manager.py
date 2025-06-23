@@ -35,7 +35,12 @@ class ContainerManager:
             self.client.ping()
             logger.info("Connected to Docker daemon")
         except DockerException as e:
-            logger.error(f"Failed to connect to Docker daemon: {str(e)}")
+            if "Permission denied" in str(e):
+                logger.error(f"Permission denied when connecting to Docker daemon. "
+                          f"Make sure the user running this service is in the docker group. "
+                          f"You may need to log out and log in again for group changes to take effect.")
+            else:
+                logger.error(f"Failed to connect to Docker daemon: {str(e)}")
             raise
 
     def _find_available_port(self) -> int:

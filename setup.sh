@@ -117,6 +117,16 @@ $INSTALL_DIR/venv/bin/pip install -r $INSTALL_DIR/requirements.txt
 CURRENT_USER=$(logname || echo $SUDO_USER || echo $USER)
 echo "Setting up service as user: $CURRENT_USER"
 
+# Check if user is in the docker group
+if getent group docker | grep -q "\b${CURRENT_USER}\b"; then
+    echo -e "${GREEN}User ${CURRENT_USER} is already in the docker group.${NC}"
+else
+    echo -e "${YELLOW}Adding user ${CURRENT_USER} to the docker group...${NC}"
+    usermod -aG docker $CURRENT_USER
+    echo -e "${GREEN}User added to docker group. This will take effect on next login.${NC}"
+    echo -e "${YELLOW}You may need to log out and log back in for changes to take effect.${NC}"
+fi
+
 # Make main.py executable
 chmod +x $INSTALL_DIR/orchestrator/main.py
 

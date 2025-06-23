@@ -398,6 +398,13 @@ sudo ./uninstall_service.sh
 1. Ensure Docker is running: `sudo systemctl status docker`
 2. Check Docker container logs: `docker logs mcp-{server-id}`
 3. Verify the Docker images specified in mcp.config.json are accessible
+4. If you see "Permission denied" errors:
+   - The service user needs access to the Docker socket
+   - The setup script should have added the user to the docker group 
+   - You may need to log out and log back in for group changes to take effect
+   - Alternatively, restart the system to ensure group changes are applied
+   - You can verify group membership with: `groups $USER`
+   - If needed, manually add the user: `sudo usermod -aG docker $USER`
 
 ### Dashboard Access Issues
 
