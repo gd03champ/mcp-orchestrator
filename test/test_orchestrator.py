@@ -256,9 +256,43 @@ services:
     @mock.patch('subprocess.run')
     def test_compose_manager(self, mock_subprocess):
         """Test compose manager."""
-        # Mock subprocess run to simulate docker-compose commands
-        mock_subprocess.return_value.returncode = 0
-        mock_subprocess.return_value.stdout = "test-server"
+        
+        # Define a side effect function to handle different commands
+        def mock_subprocess_run(args, **kwargs):
+            # Create a mock response object
+            mock_response = mock.Mock()
+            mock_response.returncode = 0
+            
+            # Check for docker compose version
+            if len(args) >= 3 and args[0:2] == ["docker", "compose"] and args[2] == "--version":
+                mock_response.stdout = "Docker Compose version v2.17.2"
+                return mock_response
+                
+            # Check for docker compose ps (checking if service exists)
+            if (len(args) >= 6 and args[0:2] == ["docker", "compose"] and 
+                args[2] == "-f" and args[4] == "ps" and args[5] == "--services"):
+                mock_response.stdout = "test-server"
+                return mock_response
+                
+            # Check for docker inspect
+            if len(args) >= 2 and args[0] == "docker" and args[1] == "inspect":
+                mock_response.stdout = """[
+  {
+    "Id": "container-id-0",
+    "State": {"Status": "running", "Running": true, "Health": {"Status": "healthy"}},
+    "Created": "2025-06-22T12:00:00Z",
+    "Config": {"Image": "test-image:latest"},
+    "NetworkSettings": {"Ports": {"8080/tcp": [{"HostPort": "8080"}]}}
+  }
+]"""
+                return mock_response
+                
+            # Default for other commands (like up, restart, etc)
+            mock_response.stdout = ""
+            return mock_response
+            
+        # Set the side effect for the mock
+        mock_subprocess.side_effect = mock_subprocess_run
         
         # Create compose manager
         compose_manager = ComposeManager(self.config_manager)
@@ -268,15 +302,6 @@ services:
         self.assertTrue(result)
         
         # Test getting service info
-        mock_subprocess.return_value.stdout = """
-[
-  {
-    "Id": "container-id-0",
-    "State": {"Status": "running", "Running": true, "Health": {"Status": "healthy"}},
-    "Created": "2025-06-22T12:00:00Z",
-    "Config": {"Image": "test-image:latest"}
-  }
-]"""
         info = compose_manager.get_service_info('test-server')
         self.assertTrue(info['exists'])
         
@@ -334,10 +359,26 @@ services:
         with mock.patch('subprocess.run') as mock_subprocess, \
              mock.patch('boto3.client', return_value=self.aws_mock):
             
-            # Configure mock subprocess
-            mock_subprocess.return_value.returncode = 0
-            mock_subprocess.return_value.stdout = """
-[
+            # Define a side effect function to handle different commands
+            def mock_subprocess_run(args, **kwargs):
+                # Create a mock response object
+                mock_response = mock.Mock()
+                mock_response.returncode = 0
+                
+                # Check for docker compose version
+                if len(args) >= 3 and args[0:2] == ["docker", "compose"] and args[2] == "--version":
+                    mock_response.stdout = "Docker Compose version v2.17.2"
+                    return mock_response
+                    
+                # Check for docker compose ps (checking if service exists)
+                if (len(args) >= 6 and args[0:2] == ["docker", "compose"] and 
+                    args[2] == "-f" and args[4] == "ps" and args[5] == "--services"):
+                    mock_response.stdout = "test-server"
+                    return mock_response
+                    
+                # Check for docker inspect
+                if len(args) >= 2 and args[0] == "docker" and args[1] == "inspect":
+                    mock_response.stdout = """[
   {
     "Id": "container-id-0",
     "State": {"Status": "running", "Running": true, "Health": {"Status": "healthy"}},
@@ -346,6 +387,14 @@ services:
     "NetworkSettings": {"Ports": {"8080/tcp": [{"HostPort": "8080"}]}}
   }
 ]"""
+                    return mock_response
+                    
+                # Default for other commands (like up, restart, etc)
+                mock_response.stdout = ""
+                return mock_response
+                
+            # Set the side effect for the mock
+            mock_subprocess.side_effect = mock_subprocess_run
             
             # Create managers
             compose_manager = ComposeManager(self.config_manager)
